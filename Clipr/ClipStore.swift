@@ -8,7 +8,10 @@ class ClipStore: ObservableObject {
 
     @Published var clips: [ClipItem] = []
     @Published var isIncognito: Bool = false {
-        didSet { NotificationCenter.default.post(name: .cliprIncognitoChanged, object: nil) }
+        didSet {
+            NotificationCenter.default.post(name: .cliprIncognitoChanged, object: nil)
+            SoundManager.shared.play(isIncognito ? .incognitoOn : .incognitoOff)
+        }
     }
     @Published var searchQuery: String = ""
     @Published var selectedContentType: ContentType? = nil
@@ -46,6 +49,7 @@ class ClipStore: ObservableObject {
         guard let db = DatabaseManager.shared.dbQueue else { return }
         DispatchQueue.global(qos: .userInitiated).async {
             do {
+                self.backfillContentHashes(db: db)
                 let loaded = try db.read { db in
                     try ClipItem
                         .order(Column("isPinned").desc, Column("createdAt").desc)
@@ -55,6 +59,48 @@ class ClipStore: ObservableObject {
             } catch {
                 print("ClipStore: loadClips failed — \(error)")
             }
+        }
+    }
+
+    private func backfillContentHashes(db: DatabaseQueue) {
+        do {
+            let unhashedRows = try db.read { db in
+                try ClipItem.filter(Column("contentHash") == nil).fetchAll(db)
+            }
+            guard !unhashedRows.isEmpty else { return }
+            try db.write { db in
+                for clip in unhashedRows {
+                    let hash: String?
+                    if let text = clip.textContent {
+                        hash = ClipItem.hash(text: text)
+                    } else if let data = clip.rtfData {
+                        hash = ClipItem.hash(data: data)
+                    } else {
+                        hash = nil
+                    }
+                    guard let h = hash else { continue }
+                    // If another row already has this hash, keep the newer row and delete this one
+                    if let existing = try ClipItem
+                        .filter(Column("contentHash") == h)
+                        .fetchOne(db) {
+                        if existing.id != clip.id {
+                            try db.execute(
+                                sql: "UPDATE clips SET copyCount = copyCount + ?, createdAt = MAX(createdAt, ?) WHERE id = ?",
+                                arguments: [clip.copyCount, clip.createdAt, existing.id]
+                            )
+                            try clip.delete(db)
+                        }
+                    } else {
+                        try db.execute(
+                            sql: "UPDATE clips SET contentHash = ?, firstCopiedAt = COALESCE(firstCopiedAt, createdAt) WHERE id = ?",
+                            arguments: [h, clip.id]
+                        )
+                    }
+                }
+            }
+            print("ClipStore: backfilled contentHash for \(unhashedRows.count) legacy rows")
+        } catch {
+            print("ClipStore: backfillContentHashes failed — \(error)")
         }
     }
 
@@ -113,6 +159,7 @@ class ClipStore: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 try db.write { db in try updated.save(db) }
+                SoundManager.shared.play(.clipPinned)
                 DispatchQueue.main.async {
                     if let idx = self.clips.firstIndex(where: { $0.id == clip.id }) {
                         self.clips[idx] = updated
@@ -126,6 +173,46 @@ class ClipStore: ObservableObject {
                 print("ClipStore: togglePin failed — \(error)")
             }
         }
+    }
+
+    /// Called when an exact duplicate is detected. Bumps copy_count, updates createdAt,
+    /// and moves the card to the top of the grid. Returns true if a duplicate was found.
+    func promoteDuplicate(hash: String) -> Bool {
+        guard let db = DatabaseManager.shared.dbQueue else { return false }
+        var found = false
+        DispatchQueue.global(qos: .userInitiated).sync {
+            do {
+                try db.write { db in
+                    if let existing = try ClipItem
+                        .filter(Column("contentHash") == hash)
+                        .fetchOne(db) {
+                        found = true
+                        try db.execute(
+                            sql: """
+                                UPDATE clips
+                                SET copyCount = copyCount + 1,
+                                    createdAt = ?
+                                WHERE id = ?
+                                """,
+                            arguments: [Date(), existing.id]
+                        )
+                        DispatchQueue.main.async {
+                            if let idx = self.clips.firstIndex(where: { $0.id == existing.id }) {
+                                var updated = self.clips.remove(at: idx)
+                                updated.copyCount += 1
+                                updated.createdAt  = Date()
+                                // Insert at top (after pinned items)
+                                let insertAt = self.clips.firstIndex(where: { !$0.isPinned }) ?? 0
+                                self.clips.insert(updated, at: insertAt)
+                            }
+                        }
+                    }
+                }
+            } catch {
+                print("ClipStore: promoteDuplicate failed — \(error)")
+            }
+        }
+        return found
     }
 
     func updateOCRText(clipId: String, ocrText: String) {
