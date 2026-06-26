@@ -1,12 +1,15 @@
 import Foundation
 import Combine
+import AppKit
 import GRDB
 
 class ClipStore: ObservableObject {
     static let shared = ClipStore()
 
     @Published var clips: [ClipItem] = []
-    @Published var isIncognito: Bool = false
+    @Published var isIncognito: Bool = false {
+        didSet { NotificationCenter.default.post(name: .cliprIncognitoChanged, object: nil) }
+    }
     @Published var searchQuery: String = ""
     @Published var selectedContentType: ContentType? = nil
     @Published var selectedSourceApp: String? = nil
@@ -69,6 +72,21 @@ class ClipStore: ObservableObject {
                 }
             } catch {
                 print("ClipStore: saveClip failed — \(error)")
+            }
+        }
+    }
+
+    func clearAll() {
+        guard let db = DatabaseManager.shared.dbQueue else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let imageFiles = self.clips.compactMap { $0.imageFilename }
+                try db.write { db in try db.execute(sql: "DELETE FROM clips") }
+                imageFiles.forEach { FileStore.shared.deleteImage(filename: $0) }
+                NSPasteboard.general.clearContents()
+                DispatchQueue.main.async { self.clips = [] }
+            } catch {
+                print("ClipStore: clearAll failed — \(error)")
             }
         }
     }

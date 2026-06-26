@@ -1,0 +1,126 @@
+import AppKit
+import SwiftUI
+import ObjectiveC
+
+// NSHostingView in macOS 26 calls windowDidLayout() → updateAnimatedWindowSize() → setFrame,
+// which re-entrantly triggers _postWindowNeedsUpdateConstraints and crashes.
+// We swizzle windowDidLayout to a no-op since we drive the frame manually.
+private var swizzled = false
+private func swizzleHostingViewIfNeeded() {
+    guard !swizzled else { return }
+    swizzled = true
+    let cls: AnyClass = NSHostingView<AnyView>.self
+    let sel = NSSelectorFromString("windowDidLayout")
+    if let orig = class_getInstanceMethod(cls, sel) {
+        let block: @convention(block) (AnyObject) -> Void = { _ in }
+        let imp = imp_implementationWithBlock(block)
+        method_setImplementation(orig, imp)
+    }
+}
+
+class NotchPanel: NSWindow {
+    static let shared = NotchPanel()
+
+    private(set) var isExpanded = false
+    private let expandedWidth:  CGFloat = 860
+    private let expandedHeight: CGFloat = 560
+    private let pillWidth:      CGFloat = 160
+    private let pillHeight:     CGFloat = 34
+
+    private init() {
+        super.init(
+            contentRect: NSRect(x: 0, y: 0, width: 860, height: 560),
+            styleMask:   [.borderless],
+            backing:     .buffered,
+            defer:       true
+        )
+
+        swizzleHostingViewIfNeeded()
+
+        level                  = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)) + 1)
+        backgroundColor        = .clear
+        isOpaque               = false
+        hasShadow              = true
+        isMovable              = false
+        collectionBehavior     = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        ignoresMouseEvents     = false
+
+        let root = NotchPanelView(panel: self)
+            .environmentObject(ClipStore.shared)
+
+        let hosting = NSHostingView(rootView: root)
+        hosting.sizingOptions          = []
+        hosting.autoresizingMask       = [.width, .height]
+        contentView                    = hosting
+
+        positionAtTop(expanded: false, animate: false)
+        // Start hidden — menu bar icon is the trigger
+    }
+
+    // MARK: - Toggle
+
+    func toggle() {
+        isExpanded ? collapse() : expand()
+    }
+
+    func expand() {
+        guard !isExpanded else { return }
+        isExpanded = true
+        NotificationCenter.default.post(name: .notchPanelToggled, object: true)
+        positionAtTop(expanded: true, animate: true)
+        makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func collapse() {
+        guard isExpanded else { return }
+        isExpanded = false
+        NotificationCenter.default.post(name: .notchPanelToggled, object: false)
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration       = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            animator().alphaValue = 0
+        }, completionHandler: {
+            self.orderOut(nil)
+            self.alphaValue = 1
+        })
+    }
+
+    // MARK: - Positioning
+
+    private func positionAtTop(expanded: Bool, animate: Bool) {
+        guard let screen = NSScreen.main else { return }
+        let sw = screen.frame.width
+        let sh = screen.frame.maxY
+
+        let w = expanded ? expandedWidth  : pillWidth
+        let h = expanded ? expandedHeight : pillHeight
+        let x = (sw - w) / 2
+        let y = sh - h
+
+        let target = CGRect(x: x, y: y, width: w, height: h)
+        if animate {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration       = 0.38
+                ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.32, 1.28, 0.48, 1.0)
+                animator().setFrame(target, display: true)
+            }
+        } else {
+            setFrame(target, display: false)
+        }
+    }
+
+    // MARK: - Key window / dismiss
+
+    override func resignKey() {
+        super.resignKey()
+        if isExpanded { collapse() }
+    }
+
+    override var canBecomeKey: Bool  { true  }
+    override var canBecomeMain: Bool { false }
+
+    // Cmd+W / close events collapse the panel instead of destroying the window
+    override func performClose(_ sender: Any?) { collapse() }
+    override func close() { collapse() }
+}
