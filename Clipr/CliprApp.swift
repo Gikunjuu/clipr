@@ -1,17 +1,18 @@
-//
-//  CliprApp.swift
-//  Clipr
-//
-//  Created by Collins Gikunju on 26/06/2026.
-//
-
 import SwiftUI
 
 @main
 struct CliprApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var clipStore = ClipStore.shared
+
     var body: some Scene {
-        DocumentGroup(newDocument: CliprDocument()) { file in
-            ContentView(document: file.$document)
+        MenuBarExtra {
+            PopoverRootView()
+                .environmentObject(clipStore)
+        } label: {
+            Image(systemName: clipStore.isIncognito ? "eye.slash" : "doc.on.clipboard")
+                .symbolRenderingMode(.hierarchical)
         }
+        .menuBarExtraStyle(.window)
     }
 }
