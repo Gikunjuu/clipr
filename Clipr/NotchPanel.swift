@@ -22,6 +22,7 @@ class NotchPanel: NSWindow {
     static let shared = NotchPanel()
 
     private(set) var isExpanded = false
+    private var lastCollapsedAt: Date = .distantPast  // debounce resignKey race
     private let expandedWidth:  CGFloat = 860
     private let expandedHeight: CGFloat = 560
     private let pillWidth:      CGFloat = 160
@@ -64,6 +65,10 @@ class NotchPanel: NSWindow {
     }
 
     func expand() {
+        // If we just collapsed (< 0.35 s ago) it means the user clicked the menu bar
+        // icon while the panel was open: resignKey fired collapse() first, then
+        // togglePanel() fired expand(). Treat that as a "close" intent, not open.
+        guard Date().timeIntervalSince(lastCollapsedAt) > 0.35 else { return }
         guard !isExpanded else { return }
         isExpanded = true
         NotificationCenter.default.post(name: .notchPanelToggled, object: true)
@@ -75,6 +80,7 @@ class NotchPanel: NSWindow {
     func collapse() {
         guard isExpanded else { return }
         isExpanded = false
+        lastCollapsedAt = Date()
         NotificationCenter.default.post(name: .notchPanelToggled, object: false)
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration       = 0.22
