@@ -7,7 +7,7 @@ struct NotchPanelView: View {
 
     @State private var showContent = false
 
-    private let columns = [GridItem(.adaptive(minimum: 175, maximum: 220), spacing: 10)]
+    private let columns = [GridItem(.adaptive(minimum: 180, maximum: 230), spacing: 16)]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -161,13 +161,13 @@ struct NotchPanelView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: 10) {
+                    LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(store.filteredClips) { clip in
                             ClipCardView(clip: clip)
                                 .environmentObject(store)
                         }
                     }
-                    .padding(20)
+                    .padding(16)
                 }
             }
         }
