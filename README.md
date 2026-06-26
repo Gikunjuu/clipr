@@ -6,6 +6,8 @@ A local-first, visual clipboard history manager for macOS — lives in your menu
 
 ![Clipr demo](assets/demo.gif)
 
+![Clipr screenshot](assets/screenshot.png)
+
 ## Features
 
 - **Visual grid** — every clip shown as a card: screenshots, colors, code, URLs, files, text
