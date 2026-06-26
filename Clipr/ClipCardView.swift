@@ -93,19 +93,32 @@ struct ClipCardView: View {
             }
 
         case .url:
-            VStack(spacing: 6) {
-                Image(systemName: "link")
-                    .font(.system(size: 22))
-                    .foregroundStyle(Color.accentColor)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "link.circle.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                    if let host = URL(string: clip.textContent ?? "")?.host {
+                        Text(host)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(Color.accentColor.opacity(0.8))
+                            .lineLimit(1)
+                    }
+                }
                 Text(clip.urlTitle ?? clip.textContent ?? "")
-                    .font(.caption)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.primary)
                     .lineLimit(3)
-                    .padding(.horizontal, 8)
+                    .multilineTextAlignment(.leading)
+                Text(clip.textContent ?? "")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(NSColor.controlBackgroundColor))
+            .padding(10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color.accentColor.opacity(0.08))
 
         case .code:
             Text(clip.textContent ?? "")
