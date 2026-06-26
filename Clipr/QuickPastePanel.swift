@@ -70,6 +70,7 @@ class QuickPastePanel: NSPanel {
             if let t = clip.textContent { pb.setString(t, forType: .string) }
         }
 
+        SoundManager.shared.play(.pasteFromPanel)
         dismiss()
 
         // Give macOS time to process the panel close, then reactivate previous app and send Cmd+V

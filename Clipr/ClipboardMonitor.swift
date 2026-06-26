@@ -49,17 +49,30 @@ class ClipboardMonitor {
 
     private func capture(pbItems: [NSPasteboardItem], sourceApp: String?, sourceBundle: String?) {
         let pb = NSPasteboard.general
-        guard let clip = buildClip(pb: pb, sourceApp: sourceApp, sourceBundle: sourceBundle)
+        guard let built = buildClip(pb: pb, sourceApp: sourceApp, sourceBundle: sourceBundle)
         else { return }
 
         // Skip sensitive data
-        guard !SensitiveDataFilter.shared.shouldSkip(clip) else { return }
+        guard !SensitiveDataFilter.shared.shouldSkip(built) else { return }
 
-        // Skip if content is identical to the most recent clip
-        if let last = ClipStore.shared.clips.first,
-           last.textContent != nil && last.textContent == clip.textContent { return }
+        // Compute content hash for deduplication
+        var clip = built
+        if let text = clip.textContent {
+            clip.contentHash = ClipItem.hash(text: text)
+        } else if let data = clip.rtfData {
+            clip.contentHash = ClipItem.hash(data: data)
+        }
+        clip.firstCopiedAt = clip.createdAt
+
+        // Exact duplicate — promote existing card instead of inserting
+        if let hash = clip.contentHash,
+           ClipStore.shared.promoteDuplicate(hash: hash) {
+            SoundManager.shared.play(.duplicateBlocked)
+            return
+        }
 
         ClipStore.shared.saveClip(clip)
+        SoundManager.shared.play(.clipCaptured)
 
         // Fire OCR for images asynchronously
         if clip.contentType == .image,

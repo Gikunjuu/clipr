@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import GRDB
 
 enum ContentType: String, Codable, CaseIterable, Identifiable {
@@ -51,14 +52,18 @@ struct ClipItem: Identifiable, Codable, FetchableRecord, PersistableRecord {
     var isPinned: Bool
     var ocrText: String?
     var urlTitle: String?
+    // Duplicate detection
+    var contentHash: String?
+    var copyCount: Int
+    var firstCopiedAt: Date
 
     static let databaseTableName = "clips"
 
-    // GRDB uses property names as column names via Codable.
     enum CodingKeys: String, CodingKey {
         case id, contentType, textContent, rtfData, imageFilename
         case filePath, colorHex, sourceApp, sourceAppBundle
         case createdAt, isPinned, ocrText, urlTitle
+        case contentHash, copyCount, firstCopiedAt
     }
 
     init(
@@ -74,20 +79,48 @@ struct ClipItem: Identifiable, Codable, FetchableRecord, PersistableRecord {
         createdAt: Date = Date(),
         isPinned: Bool = false,
         ocrText: String? = nil,
-        urlTitle: String? = nil
+        urlTitle: String? = nil,
+        contentHash: String? = nil,
+        copyCount: Int = 1,
+        firstCopiedAt: Date = Date()
     ) {
-        self.id = id
-        self.contentType = contentType
-        self.textContent = textContent
-        self.rtfData = rtfData
+        self.id            = id
+        self.contentType   = contentType
+        self.textContent   = textContent
+        self.rtfData       = rtfData
         self.imageFilename = imageFilename
-        self.filePath = filePath
-        self.colorHex = colorHex
-        self.sourceApp = sourceApp
+        self.filePath      = filePath
+        self.colorHex      = colorHex
+        self.sourceApp     = sourceApp
         self.sourceAppBundle = sourceAppBundle
-        self.createdAt = createdAt
-        self.isPinned = isPinned
-        self.ocrText = ocrText
-        self.urlTitle = urlTitle
+        self.createdAt     = createdAt
+        self.isPinned      = isPinned
+        self.ocrText       = ocrText
+        self.urlTitle      = urlTitle
+        self.contentHash   = contentHash
+        self.copyCount     = copyCount
+        self.firstCopiedAt = firstCopiedAt
+    }
+}
+
+// MARK: - Content hashing
+
+extension ClipItem {
+    /// SHA-256 of normalised text content (trimmed, NFC Unicode).
+    static func hash(text: String) -> String {
+        let normalised = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping   // NFC
+        let data = Data(normalised.utf8)
+        return SHA256.hash(data: data)
+            .compactMap { String(format: "%02x", $0) }
+            .joined()
+    }
+
+    /// SHA-256 of raw data (for images, files).
+    static func hash(data: Data) -> String {
+        SHA256.hash(data: data)
+            .compactMap { String(format: "%02x", $0) }
+            .joined()
     }
 }

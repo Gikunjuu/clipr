@@ -37,6 +37,18 @@ struct ClipCardView: View {
         }
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(10)
+        .overlay(alignment: .topTrailing) {
+            if clip.copyCount > 1 {
+                Text(clip.copyCount > 99 ? "99+" : "\(clip.copyCount)×")
+                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.accentColor)
+                    .clipShape(Capsule())
+                    .padding(6)
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(

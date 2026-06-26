@@ -28,6 +28,7 @@ class DatabaseManager {
         var migrator = DatabaseMigrator()
 
         migrator.registerMigration("v1_initial") { db in
+            // legacy — kept for existing installs
             try db.create(table: "clips") { t in
                 t.column("id", .text).primaryKey()
                 t.column("contentType", .text).notNull()
@@ -46,6 +47,16 @@ class DatabaseManager {
             try db.create(index: "clips_createdAt",    on: "clips", columns: ["createdAt"])
             try db.create(index: "clips_contentType",  on: "clips", columns: ["contentType"])
             try db.create(index: "clips_isPinned",     on: "clips", columns: ["isPinned"])
+        }
+
+        migrator.registerMigration("v2_duplicate_detection") { db in
+            try db.alter(table: "clips") { t in
+                t.add(column: "contentHash",   .text)
+                t.add(column: "copyCount",     .integer).defaults(to: 1)
+                t.add(column: "firstCopiedAt", .datetime)
+            }
+            try db.create(index: "clips_contentHash", on: "clips", columns: ["contentHash"],
+                          unique: false, ifNotExists: true)
         }
 
         try migrator.migrate(db)
