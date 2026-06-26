@@ -1,7 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 
-// CGEventTap for global Ctrl+Cmd+V quick-paste hotkey.
+// CGEventTap for global Cmd+Shift+V quick-paste hotkey.
 // Requires the user to grant Accessibility access in System Settings > Privacy & Security.
 // We prompt on first launch; CGEventTap is created once access is confirmed.
 class GlobalHotkeyManager {
@@ -12,7 +12,7 @@ class GlobalHotkeyManager {
 
     // V = key code 9
     private let hotkeyCode: CGKeyCode  = 9
-    private let hotkeyFlags: CGEventFlags = [.maskControl, .maskCommand]
+    private let hotkeyFlags: CGEventFlags = [.maskShift, .maskCommand]
 
     private init() {}
 
