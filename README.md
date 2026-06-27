@@ -4,6 +4,8 @@ A local-first, visual clipboard history manager for macOS — lives in your menu
 
 ![macOS](https://img.shields.io/badge/macOS-13%2B-black) ![Swift](https://img.shields.io/badge/Swift-5.9-orange) ![License](https://img.shields.io/badge/license-MIT-blue)
 
+[![Download](https://img.shields.io/badge/Download-Clipr%20v1.0-blue?style=for-the-badge&logo=apple)](https://github.com/Gikunjuu/clipr/releases/download/v1.0/Clipr-v1.0.dmg)
+
 ![Clipr demo](assets/demo.gif)
 
 ![Clipr screenshot](assets/screenshot.png)
