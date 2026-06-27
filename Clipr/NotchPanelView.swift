@@ -39,6 +39,9 @@ struct NotchPanelView: View {
                 showContent = expanded
             }
             if !expanded { selection.removeAll() }
+        if !selection.isEmpty {
+            UserDefaults.standard.set(true, forKey: "clipr.hasUsedMultiSelect")
+        }
         }
     }
 
@@ -191,17 +194,39 @@ struct NotchPanelView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 10) {
-                        ForEach(store.filteredClips) { clip in
-                            ClipCardView(clip: clip, selection: $selection)
-                                .environmentObject(store)
+                ZStack(alignment: .bottom) {
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(store.filteredClips) { clip in
+                                ClipCardView(clip: clip, selection: $selection)
+                                    .environmentObject(store)
+                            }
                         }
+                        .padding(20)
+                        .padding(.bottom, 28)  // room for the hint bar
                     }
-                    .padding(20)
+
+                    // Hint disappears once the user has multi-selected at least once
+                    if selection.isEmpty && !hasUsedMultiSelect {
+                        HStack(spacing: 5) {
+                            Image(systemName: "command")
+                                .font(.system(size: 10, weight: .medium))
+                            Text("+ click to select multiple clips")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundStyle(.tertiary)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity)
+                        .background(.ultraThinMaterial)
+                        .transition(.opacity)
+                    }
                 }
             }
         }
+    }
+
+    private var hasUsedMultiSelect: Bool {
+        UserDefaults.standard.bool(forKey: "clipr.hasUsedMultiSelect")
     }
 }
 
