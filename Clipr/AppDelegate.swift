@@ -8,6 +8,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Enforce single instance — if another Clipr is already running, quit this one
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.clipr.app"
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+        if !others.isEmpty {
+            others.first?.activate(options: .activateIgnoringOtherApps)
+            NSApp.terminate(nil)
+            return
+        }
+
         DatabaseManager.shared.setup()
         ClipStore.shared.loadClips()
         ClipboardMonitor.shared.start()
