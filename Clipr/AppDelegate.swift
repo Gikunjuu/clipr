@@ -14,8 +14,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         GlobalHotkeyManager.shared.start()
 
         setupStatusItem()
-        // Defer panel creation until after the run loop is live
         DispatchQueue.main.async { _ = NotchPanel.shared }
+
+        // Prompt for Accessibility if not yet granted — needed for paste simulation
+        if !AXIsProcessTrusted() {
+            let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+            AXIsProcessTrustedWithOptions(opts as CFDictionary)
+        }
     }
 
     // MARK: - Status item

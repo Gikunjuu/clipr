@@ -83,48 +83,27 @@ class NotchPanel: NSWindow {
     func pasteMultipleAndClose(_ clips: [ClipItem]) {
         guard !clips.isEmpty else { return }
 
-        // Build a joined string from all text-bearing clips (in selection order)
         let parts: [String] = clips.compactMap { clip in
             switch clip.contentType {
-            case .image:
-                return nil  // images can't be joined into text
-            case .richText, .text, .url, .code, .color, .filePath:
-                return clip.textContent ?? clip.filePath
+            case .image: return nil
+            default:     return clip.textContent ?? clip.filePath
             }
         }
 
         let pb = NSPasteboard.general
         pb.clearContents()
 
-        if parts.count == clips.count {
-            // All clips are text — join with double newline
-            pb.setString(parts.joined(separator: "\n\n"), forType: .string)
-        } else if parts.isEmpty {
-            // All images — paste the first one
+        if parts.isEmpty {
             if let f = clips.first?.imageFilename, let img = FileStore.shared.loadImage(filename: f) {
                 pb.writeObjects([img])
             }
         } else {
-            // Mixed — paste the text parts joined
             pb.setString(parts.joined(separator: "\n\n"), forType: .string)
         }
 
         SoundManager.shared.play(.pasteFromPanel)
         collapse()
-
-        let target = previousApp
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            target?.activate()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                let src  = CGEventSource(stateID: .hidSystemState)
-                let down = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: true)
-                let up   = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: false)
-                down?.flags = .maskCommand
-                up?.flags   = .maskCommand
-                down?.post(tap: .cgSessionEventTap)
-                up?.post(tap: .cgSessionEventTap)
-            }
-        }
+        sendPaste(to: previousApp)
     }
 
     /// Write clip to pasteboard, close the panel, reactivate the source app, and send Cmd+V.
@@ -137,7 +116,7 @@ class NotchPanel: NSWindow {
                 pb.writeObjects([img])
             }
         case .richText:
-            if let rtf = clip.rtfData       { pb.setData(rtf, forType: .rtf) }
+            if let rtf = clip.rtfData        { pb.setData(rtf, forType: .rtf) }
             else if let t = clip.textContent { pb.setString(t, forType: .string) }
         case .filePath:
             if let paths = clip.filePath {
@@ -151,18 +130,34 @@ class NotchPanel: NSWindow {
 
         SoundManager.shared.play(.pasteFromPanel)
         collapse()
+        sendPaste(to: previousApp)
+    }
 
-        let target = previousApp
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            target?.activate()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                let src  = CGEventSource(stateID: .hidSystemState)
-                let down = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: true)
-                let up   = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: false)
-                down?.flags = .maskCommand
-                up?.flags   = .maskCommand
-                down?.post(tap: .cgSessionEventTap)
-                up?.post(tap: .cgSessionEventTap)
+    // MARK: - Paste delivery
+
+    private func sendPaste(to target: NSRunningApplication?) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            target?.activate(options: .activateIgnoringOtherApps)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                if AXIsProcessTrusted() {
+                    // Preferred: CGEventTap — works in all apps including Electron
+                    let src  = CGEventSource(stateID: .hidSystemState)
+                    let down = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: true)
+                    let up   = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: false)
+                    down?.flags = .maskCommand
+                    up?.flags   = .maskCommand
+                    down?.post(tap: .cgSessionEventTap)
+                    up?.post(tap: .cgSessionEventTap)
+                } else {
+                    // Fallback: AppleScript keystroke (prompts for Automation permission once)
+                    let appName = target?.localizedName ?? ""
+                    let script = """
+                        tell application "\(appName)" to activate
+                        tell application "System Events" to keystroke "v" using command down
+                        """
+                    var err: NSDictionary?
+                    NSAppleScript(source: script)?.executeAndReturnError(&err)
+                }
             }
         }
     }
