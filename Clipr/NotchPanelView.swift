@@ -16,6 +16,19 @@ struct NotchPanelView: View {
                 header
                 typeFilterBar
                 Divider().opacity(0.25)
+                if !hasUsedMultiSelect && !store.filteredClips.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "command")
+                            .font(.system(size: 10, weight: .medium))
+                        Text("+ click cards to select multiple and paste at once")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.05))
+                    Divider().opacity(0.15)
+                }
                 clipGrid
             } else {
                 // Collapsed pill label
@@ -194,32 +207,14 @@ struct NotchPanelView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ZStack(alignment: .bottom) {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(store.filteredClips) { clip in
-                                ClipCardView(clip: clip, selection: $selection)
-                                    .environmentObject(store)
-                            }
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        ForEach(store.filteredClips) { clip in
+                            ClipCardView(clip: clip, selection: $selection)
+                                .environmentObject(store)
                         }
-                        .padding(20)
-                        .padding(.bottom, 28)  // room for the hint bar
                     }
-
-                    // Hint disappears once the user has multi-selected at least once
-                    if selection.isEmpty && !hasUsedMultiSelect {
-                        HStack(spacing: 5) {
-                            Image(systemName: "command")
-                                .font(.system(size: 10, weight: .medium))
-                            Text("+ click to select multiple clips")
-                                .font(.system(size: 11))
-                        }
-                        .foregroundStyle(.tertiary)
-                        .padding(.vertical, 6)
-                        .frame(maxWidth: .infinity)
-                        .background(.ultraThinMaterial)
-                        .transition(.opacity)
-                    }
+                    .padding(20)
                 }
             }
         }
