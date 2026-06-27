@@ -1,21 +1,5 @@
 import AppKit
 
-// All pasteboard reads happen on the main thread at capture time.
-// This struct holds the snapshot so the background thread never touches NSPasteboard.
-struct PasteboardSnapshot {
-    let image:     NSImage?
-    let fileURLs:  [URL]
-    let rtfData:   Data?
-    let plainText: String?
-
-    init(_ pb: NSPasteboard) {
-        image     = NSImage(pasteboard: pb)
-        fileURLs  = (pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]) ?? []
-        rtfData   = pb.data(forType: .rtf)
-        plainText = pb.string(forType: .string)
-    }
-}
-
 class ClipboardMonitor {
     static let shared = ClipboardMonitor()
 
@@ -51,10 +35,10 @@ class ClipboardMonitor {
 
         if let bundle = appBundle, isExcluded(bundle) { return }
 
-        // Snapshot all pasteboard data on the main thread before dispatching
-        let snapshot = PasteboardSnapshot(pb)
+        // Snapshot pasteboard items on the main thread, process off-main
+        let pbItems = pb.pasteboardItems ?? []
         DispatchQueue.global(qos: .userInitiated).async {
-            self.capture(snapshot: snapshot, sourceApp: appName, sourceBundle: appBundle)
+            self.capture(pbItems: pbItems, sourceApp: appName, sourceBundle: appBundle)
         }
     }
 
@@ -63,8 +47,9 @@ class ClipboardMonitor {
         return list.contains(bundle)
     }
 
-    private func capture(snapshot: PasteboardSnapshot, sourceApp: String?, sourceBundle: String?) {
-        guard let built = buildClip(snapshot: snapshot, sourceApp: sourceApp, sourceBundle: sourceBundle)
+    private func capture(pbItems: [NSPasteboardItem], sourceApp: String?, sourceBundle: String?) {
+        let pb = NSPasteboard.general
+        guard let built = buildClip(pb: pb, sourceApp: sourceApp, sourceBundle: sourceBundle)
         else { return }
 
         // Skip sensitive data
@@ -97,24 +82,25 @@ class ClipboardMonitor {
         }
     }
 
-    private func buildClip(snapshot: PasteboardSnapshot, sourceApp: String?, sourceBundle: String?) -> ClipItem? {
+    private func buildClip(pb: NSPasteboard, sourceApp: String?, sourceBundle: String?) -> ClipItem? {
 
         // --- Image ---
-        if let image = snapshot.image {
+        if let image = NSImage(pasteboard: pb) {
             guard let filename = FileStore.shared.saveImage(image) else { return nil }
             return ClipItem(contentType: .image, imageFilename: filename,
                            sourceApp: sourceApp, sourceAppBundle: sourceBundle)
         }
 
         // --- File URLs ---
-        if !snapshot.fileURLs.isEmpty {
-            let paths = snapshot.fileURLs.map(\.path).joined(separator: "\n")
+        if let urls = pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+           !urls.isEmpty {
+            let paths = urls.map(\.path).joined(separator: "\n")
             return ClipItem(contentType: .filePath, textContent: paths, filePath: paths,
                            sourceApp: sourceApp, sourceAppBundle: sourceBundle)
         }
 
         // --- RTF ---
-        if let rtfData = snapshot.rtfData {
+        if let rtfData = pb.data(forType: .rtf) {
             let plain = NSAttributedString(rtf: rtfData, documentAttributes: nil)?.string ?? ""
             let type  = detectType(plain)
             return ClipItem(
@@ -127,7 +113,7 @@ class ClipboardMonitor {
         }
 
         // --- Plain text ---
-        if let text = snapshot.plainText, !text.isEmpty {
+        if let text = pb.string(forType: .string), !text.isEmpty {
             let type = detectType(text)
             return ClipItem(
                 contentType: type,

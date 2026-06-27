@@ -6,8 +6,9 @@ struct NotchPanelView: View {
     weak var panel: NotchPanel?
 
     @State private var showContent = false
+    @State private var selection: Set<String> = []
 
-    private let columns = [GridItem(.adaptive(minimum: 180, maximum: 230), spacing: 16)]
+    private let columns = [GridItem(.adaptive(minimum: 175, maximum: 220), spacing: 10)]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +38,7 @@ struct NotchPanelView: View {
             withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
                 showContent = expanded
             }
+            if !expanded { selection.removeAll() }
         }
     }
 
@@ -83,6 +85,35 @@ struct NotchPanelView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
+            }
+
+            if !selection.isEmpty {
+                Button {
+                    let clips = store.filteredClips.filter { selection.contains($0.id) }
+                    selection.removeAll()
+                    NotchPanel.shared.pasteMultipleAndClose(clips)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "doc.on.doc")
+                        Text("Paste \(selection.count)")
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.accentColor)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .transition(.scale.combined(with: .opacity))
+
+                Button { selection.removeAll() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear selection")
             }
 
             Button(role: .destructive) { store.clearAll() } label: {
@@ -161,13 +192,13 @@ struct NotchPanelView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
+                    LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(store.filteredClips) { clip in
-                            ClipCardView(clip: clip)
+                            ClipCardView(clip: clip, selection: $selection)
                                 .environmentObject(store)
                         }
                     }
-                    .padding(16)
+                    .padding(20)
                 }
             }
         }

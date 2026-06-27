@@ -139,7 +139,7 @@ struct PopoverRootView: View {
 
     // MARK: - Grid
 
-    private let columns = [GridItem(.adaptive(minimum: 180, maximum: 230), spacing: 16)]
+    private let columns = [GridItem(.adaptive(minimum: 180, maximum: 230), spacing: 10)]
 
     private var clipGrid: some View {
         Group {
@@ -147,13 +147,13 @@ struct PopoverRootView: View {
                 emptyState
             } else {
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
+                    LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(store.filteredClips) { clip in
-                            ClipCardView(clip: clip)
+                            ClipCardView(clip: clip, selection: .constant(Set<String>()))
                                 .environmentObject(store)
                         }
                     }
-                    .padding(16)
+                    .padding(14)
                 }
             }
         }

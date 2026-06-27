@@ -3,7 +3,10 @@ import SwiftUI
 struct ClipCardView: View {
     let clip: ClipItem
     @EnvironmentObject var store: ClipStore
+    @Binding var selection: Set<String>
     @State private var isHovered = false
+
+    private var isSelected: Bool { selection.contains(clip.id) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -35,10 +38,10 @@ struct ClipCardView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(isSelected ? Color.accentColor.opacity(0.18) : Color(NSColor.controlBackgroundColor))
         .cornerRadius(10)
         .overlay(alignment: .topTrailing) {
-            if clip.copyCount > 1 {
+            if clip.copyCount > 1 && !isSelected {
                 Text(clip.copyCount > 99 ? "99+" : "\(clip.copyCount)×")
                     .font(.system(size: 10, weight: .semibold).monospacedDigit())
                     .foregroundStyle(.white)
@@ -48,21 +51,43 @@ struct ClipCardView: View {
                     .clipShape(Capsule())
                     .padding(6)
             }
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.accentColor)
+                    .padding(8)
+            }
         }
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(
-                    clip.isPinned ? Color.accentColor.opacity(0.7) : Color(NSColor.separatorColor).opacity(0.5),
-                    lineWidth: clip.isPinned ? 1.5 : 0.5
+                    isSelected         ? Color.accentColor :
+                    clip.isPinned      ? Color.accentColor.opacity(0.7) :
+                                         Color(NSColor.separatorColor).opacity(0.5),
+                    lineWidth: isSelected || clip.isPinned ? 1.5 : 0.5
                 )
         )
         .shadow(color: Color.black.opacity(isHovered ? 0.10 : 0.03), radius: isHovered ? 8 : 2, y: 2)
         .scaleEffect(isHovered ? 1.005 : 1.0)
         .animation(.easeOut(duration: 0.12), value: isHovered)
+        .animation(.easeOut(duration: 0.12), value: isSelected)
         .onHover { isHovered = $0 }
         .contextMenu { contextMenu }
-        .onTapGesture { NotchPanel.shared.pasteAndClose(clip) }
-        .help("Click to paste · Right-click for options")
+        .onTapGesture {
+            let cmdHeld = NSEvent.modifierFlags.contains(.command)
+            if cmdHeld {
+                // Cmd+click toggles selection
+                if selection.contains(clip.id) { selection.remove(clip.id) }
+                else                           { selection.insert(clip.id) }
+            } else if !selection.isEmpty {
+                // Any click while something is selected adds to selection
+                if selection.contains(clip.id) { selection.remove(clip.id) }
+                else                           { selection.insert(clip.id) }
+            } else {
+                NotchPanel.shared.pasteAndClose(clip)
+            }
+        }
+        .help("Click to paste · Cmd+click to multi-select · Right-click for options")
     }
 
     // MARK: - Preview

@@ -79,6 +79,54 @@ class NotchPanel: NSWindow {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// Concatenate multiple clips as text, paste, and close.
+    func pasteMultipleAndClose(_ clips: [ClipItem]) {
+        guard !clips.isEmpty else { return }
+
+        // Build a joined string from all text-bearing clips (in selection order)
+        let parts: [String] = clips.compactMap { clip in
+            switch clip.contentType {
+            case .image:
+                return nil  // images can't be joined into text
+            case .richText, .text, .url, .code, .color, .filePath:
+                return clip.textContent ?? clip.filePath
+            }
+        }
+
+        let pb = NSPasteboard.general
+        pb.clearContents()
+
+        if parts.count == clips.count {
+            // All clips are text — join with double newline
+            pb.setString(parts.joined(separator: "\n\n"), forType: .string)
+        } else if parts.isEmpty {
+            // All images — paste the first one
+            if let f = clips.first?.imageFilename, let img = FileStore.shared.loadImage(filename: f) {
+                pb.writeObjects([img])
+            }
+        } else {
+            // Mixed — paste the text parts joined
+            pb.setString(parts.joined(separator: "\n\n"), forType: .string)
+        }
+
+        SoundManager.shared.play(.pasteFromPanel)
+        collapse()
+
+        let target = previousApp
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            target?.activate()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                let src  = CGEventSource(stateID: .hidSystemState)
+                let down = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: true)
+                let up   = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: false)
+                down?.flags = .maskCommand
+                up?.flags   = .maskCommand
+                down?.post(tap: .cgSessionEventTap)
+                up?.post(tap: .cgSessionEventTap)
+            }
+        }
+    }
+
     /// Write clip to pasteboard, close the panel, reactivate the source app, and send Cmd+V.
     func pasteAndClose(_ clip: ClipItem) {
         let pb = NSPasteboard.general
