@@ -49,7 +49,7 @@ class QuickPastePanel: NSPanel {
     }
 
     private func paste(_ clip: ClipItem) {
-        // Write chosen clip to pasteboard
+        ClipboardMonitor.shared.skipNextCapture = true
         let pb = NSPasteboard.general
         pb.clearContents()
         switch clip.contentType {

@@ -90,6 +90,7 @@ class NotchPanel: NSWindow {
             }
         }
 
+        ClipboardMonitor.shared.skipNextCapture = true
         let pb = NSPasteboard.general
         pb.clearContents()
 
@@ -108,6 +109,7 @@ class NotchPanel: NSWindow {
 
     /// Write clip to pasteboard, close the panel, reactivate the source app, and send Cmd+V.
     func pasteAndClose(_ clip: ClipItem) {
+        ClipboardMonitor.shared.skipNextCapture = true
         let pb = NSPasteboard.general
         pb.clearContents()
         switch clip.contentType {

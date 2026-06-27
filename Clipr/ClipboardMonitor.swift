@@ -5,6 +5,8 @@ class ClipboardMonitor {
 
     private var lastChangeCount: Int = NSPasteboard.general.changeCount
     private var timer: Timer?
+    /// Set before Clipr writes to the pasteboard to suppress the resulting monitor event.
+    var skipNextCapture = false
 
     private init() {}
 
@@ -28,6 +30,8 @@ class ClipboardMonitor {
         let pb = NSPasteboard.general
         guard pb.changeCount != lastChangeCount else { return }
         lastChangeCount = pb.changeCount
+
+        if skipNextCapture { skipNextCapture = false; return }
 
         let frontApp  = NSWorkspace.shared.frontmostApplication
         let appName   = frontApp?.localizedName
