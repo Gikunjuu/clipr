@@ -65,6 +65,10 @@ class ClipboardMonitor {
             clip.contentHash = ClipItem.hash(text: text)
         } else if let data = clip.rtfData {
             clip.contentHash = ClipItem.hash(data: data)
+        } else if clip.contentType == .image {
+            // Hash raw TIFF bytes from pasteboard — identical screenshots produce the same hash
+            let imgData = pb.data(forType: .tiff) ?? pb.data(forType: NSPasteboard.PasteboardType("public.png"))
+            if let data = imgData { clip.contentHash = ClipItem.hash(data: data) }
         }
         clip.firstCopiedAt = clip.createdAt
 
