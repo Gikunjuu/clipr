@@ -61,8 +61,8 @@ struct ClipCardView: View {
         .animation(.easeOut(duration: 0.12), value: isHovered)
         .onHover { isHovered = $0 }
         .contextMenu { contextMenu }
-        .onTapGesture(count: 2) { copyToClipboard() }
-        .help("Double-click to copy · Right-click for options")
+        .onTapGesture { NotchPanel.shared.pasteAndClose(clip) }
+        .help("Click to paste · Right-click for options")
     }
 
     // MARK: - Preview
@@ -93,32 +93,19 @@ struct ClipCardView: View {
             }
 
         case .url:
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "link.circle.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
-                    if let host = URL(string: clip.textContent ?? "")?.host {
-                        Text(host)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(Color.accentColor.opacity(0.8))
-                            .lineLimit(1)
-                    }
-                }
+            VStack(spacing: 6) {
+                Image(systemName: "link")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.accentColor)
                 Text(clip.urlTitle ?? clip.textContent ?? "")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.primary)
+                    .font(.caption)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
                     .lineLimit(3)
-                    .multilineTextAlignment(.leading)
-                Text(clip.textContent ?? "")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .padding(.horizontal, 8)
             }
-            .padding(10)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(Color.accentColor.opacity(0.08))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(NSColor.controlBackgroundColor))
 
         case .code:
             Text(clip.textContent ?? "")

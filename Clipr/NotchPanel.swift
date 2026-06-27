@@ -23,6 +23,7 @@ class NotchPanel: NSWindow {
 
     private(set) var isExpanded = false
     private var lastCollapsedAt: Date = .distantPast  // debounce resignKey race
+    private(set) var previousApp: NSRunningApplication?
     private let expandedWidth:  CGFloat = 860
     private let expandedHeight: CGFloat = 560
     private let pillWidth:      CGFloat = 160
@@ -70,11 +71,52 @@ class NotchPanel: NSWindow {
         // togglePanel() fired expand(). Treat that as a "close" intent, not open.
         guard Date().timeIntervalSince(lastCollapsedAt) > 0.35 else { return }
         guard !isExpanded else { return }
+        previousApp = NSWorkspace.shared.frontmostApplication
         isExpanded = true
         NotificationCenter.default.post(name: .notchPanelToggled, object: true)
         positionAtTop(expanded: true, animate: true)
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Write clip to pasteboard, close the panel, reactivate the source app, and send Cmd+V.
+    func pasteAndClose(_ clip: ClipItem) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        switch clip.contentType {
+        case .image:
+            if let f = clip.imageFilename, let img = FileStore.shared.loadImage(filename: f) {
+                pb.writeObjects([img])
+            }
+        case .richText:
+            if let rtf = clip.rtfData       { pb.setData(rtf, forType: .rtf) }
+            else if let t = clip.textContent { pb.setString(t, forType: .string) }
+        case .filePath:
+            if let paths = clip.filePath {
+                let urls = paths.components(separatedBy: "\n")
+                    .map { URL(fileURLWithPath: $0) as NSURL }
+                pb.writeObjects(urls)
+            }
+        default:
+            if let t = clip.textContent { pb.setString(t, forType: .string) }
+        }
+
+        SoundManager.shared.play(.pasteFromPanel)
+        collapse()
+
+        let target = previousApp
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            target?.activate()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                let src  = CGEventSource(stateID: .hidSystemState)
+                let down = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: true)
+                let up   = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: false)
+                down?.flags = .maskCommand
+                up?.flags   = .maskCommand
+                down?.post(tap: .cgSessionEventTap)
+                up?.post(tap: .cgSessionEventTap)
+            }
+        }
     }
 
     func collapse() {
