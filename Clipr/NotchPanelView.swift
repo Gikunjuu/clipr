@@ -16,7 +16,7 @@ struct NotchPanelView: View {
                 header
                 typeFilterBar
                 Divider().opacity(0.25)
-                if !hasUsedMultiSelect && !store.filteredClips.isEmpty {
+                if multiSelectUseCount < 3 && !store.filteredClips.isEmpty {
                     HStack(spacing: 4) {
                         Image(systemName: "command")
                             .font(.system(size: 10, weight: .medium))
@@ -53,7 +53,8 @@ struct NotchPanelView: View {
             }
             if !expanded { selection.removeAll() }
         if !selection.isEmpty {
-            UserDefaults.standard.set(true, forKey: "clipr.hasUsedMultiSelect")
+            let count = UserDefaults.standard.integer(forKey: "clipr.multiSelectUseCount")
+            UserDefaults.standard.set(count + 1, forKey: "clipr.multiSelectUseCount")
         }
         }
     }
@@ -220,8 +221,8 @@ struct NotchPanelView: View {
         }
     }
 
-    private var hasUsedMultiSelect: Bool {
-        UserDefaults.standard.bool(forKey: "clipr.hasUsedMultiSelect")
+    private var multiSelectUseCount: Int {
+        UserDefaults.standard.integer(forKey: "clipr.multiSelectUseCount")
     }
 }
 
