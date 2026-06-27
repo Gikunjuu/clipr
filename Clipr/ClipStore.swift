@@ -75,6 +75,9 @@ class ClipStore: ObservableObject {
                         hash = ClipItem.hash(text: text)
                     } else if let data = clip.rtfData {
                         hash = ClipItem.hash(data: data)
+                    } else if let filename = clip.imageFilename,
+                              let data = FileStore.shared.loadImageData(filename: filename) {
+                        hash = ClipItem.hash(data: data)
                     } else {
                         hash = nil
                     }

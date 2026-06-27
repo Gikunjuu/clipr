@@ -30,6 +30,11 @@ class FileStore {
         return NSImage(contentsOf: url)
     }
 
+    func loadImageData(filename: String) -> Data? {
+        let url = imagesDir.appendingPathComponent(filename)
+        return try? Data(contentsOf: url)
+    }
+
     func deleteImage(filename: String) {
         let url = imagesDir.appendingPathComponent(filename)
         try? FileManager.default.removeItem(at: url)
