@@ -49,7 +49,20 @@ A local-first, visual clipboard history manager for macOS — lives in your menu
 
 ## First launch
 
-Clipr will prompt for **Accessibility** permission on first launch — this is required to simulate Cmd+V when pasting into other apps. Grant it in System Settings → Privacy & Security → Accessibility.
+**Step 1 — Bypass Gatekeeper (once)**
+
+macOS will block Clipr on first open since it isn't notarized. To get past it:
+
+1. Open your **Downloads** folder in Finder
+2. Double-click `Clipr.dmg` and drag Clipr to Applications
+3. In **Applications**, right-click `Clipr` → **Open**
+4. Click **Open** in the dialog that appears
+
+You only need to do this once. After that, Clipr opens normally.
+
+**Step 2 — Grant Accessibility permission**
+
+Clipr will prompt for Accessibility access on first launch — this is required to paste clips into other apps. Go to **System Settings → Privacy & Security → Accessibility** and enable Clipr.
 
 ## Building
 
