@@ -24,7 +24,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         GlobalHotkeyManager.shared.start()
 
         setupStatusItem()
-        DispatchQueue.main.async { _ = NotchPanel.shared }
+        DispatchQueue.main.async {
+            _ = NotchPanel.shared
+            QuickPastePanel.shared.dismiss()
+        }
 
         // Prompt for Accessibility if not yet granted — needed for paste simulation
         if !AXIsProcessTrusted() {

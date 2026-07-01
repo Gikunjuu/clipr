@@ -21,6 +21,7 @@ class QuickPastePanel: NSPanel {
         titlebarAppearsTransparent  = true
         isMovableByWindowBackground = true
         isReleasedWhenClosed        = false
+        isRestorable                = false
         hasShadow                   = true
         backgroundColor             = .clear
         isOpaque                    = false
