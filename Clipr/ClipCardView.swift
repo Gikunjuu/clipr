@@ -22,6 +22,7 @@ struct ClipCardView: View {
                         .font(.system(size: 12))
                         .foregroundStyle(.primary)
                         .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack {
                     if let app = clip.sourceApp {
@@ -37,9 +38,12 @@ struct ClipCardView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
+            .frame(height: 58)  // fixed footer height so all cards are the same total size
         }
+        .frame(height: 168)  // 110 preview + 58 footer — prevents grid row misalignment
         .background(isSelected ? Color.accentColor.opacity(0.18) : Color(NSColor.controlBackgroundColor))
         .cornerRadius(10)
+        .clipped()
         .overlay(alignment: .topTrailing) {
             if clip.copyCount > 1 && !isSelected {
                 Text(clip.copyCount > 99 ? "99+" : "\(clip.copyCount)×")
