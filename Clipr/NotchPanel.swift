@@ -77,6 +77,7 @@ class NotchPanel: NSWindow {
         positionAtTop(expanded: true, animate: true)
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        startClickOutsideMonitor()
     }
 
     /// Concatenate multiple clips as text, paste, and close.
@@ -168,6 +169,7 @@ class NotchPanel: NSWindow {
         guard isExpanded else { return }
         isExpanded = false
         lastCollapsedAt = Date()
+        stopClickOutsideMonitor()
         NotificationCenter.default.post(name: .notchPanelToggled, object: false)
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration       = 0.22
@@ -205,9 +207,22 @@ class NotchPanel: NSWindow {
 
     // MARK: - Key window / dismiss
 
-    override func resignKey() {
-        super.resignKey()
-        if isExpanded { collapse() }
+    private var clickOutsideMonitor: Any?
+
+    func startClickOutsideMonitor() {
+        guard clickOutsideMonitor == nil else { return }
+        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            guard let self, self.isExpanded else { return }
+            let mouse = NSEvent.mouseLocation
+            if !self.frame.contains(mouse) {
+                self.collapse()
+            }
+        }
+    }
+
+    func stopClickOutsideMonitor() {
+        if let m = clickOutsideMonitor { NSEvent.removeMonitor(m) }
+        clickOutsideMonitor = nil
     }
 
     override var canBecomeKey: Bool  { true  }
