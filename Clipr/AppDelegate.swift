@@ -20,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         DatabaseManager.shared.setup()
         ClipStore.shared.loadClips()
+        ClipStore.shared.runAutoExpire()
         ClipboardMonitor.shared.start()
         GlobalHotkeyManager.shared.start()
 

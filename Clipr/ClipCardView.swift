@@ -5,40 +5,75 @@ struct ClipCardView: View {
     @EnvironmentObject var store: ClipStore
     @Binding var selection: Set<String>
     @State private var isHovered = false
+    @State private var isEditing = false
+    @State private var editText = ""
 
     private var isSelected: Bool { selection.contains(clip.id) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            previewContent
-                .frame(maxWidth: .infinity)
-                .frame(height: 110)
-                .clipped()
-                .cornerRadius(8, corners: [.topLeft, .topRight])
-
-            VStack(alignment: .leading, spacing: 3) {
-                if let text = previewLabel, !text.isEmpty {
-                    Text(text)
+            ZStack {
+                if isEditing {
+                    TextEditor(text: $editText)
                         .font(.system(size: 12))
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .scrollContentBackground(.hidden)
+                        .background(Color(NSColor.textBackgroundColor))
+                        .padding(6)
+                        .onAppear { editText = clip.textContent ?? "" }
+                } else {
+                    previewContent
                 }
-                HStack {
-                    if let app = clip.sourceApp {
-                        Text(app)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 110)
+            .clipped()
+            .cornerRadius(8, corners: [.topLeft, .topRight])
+
+            if isEditing {
+                HStack(spacing: 8) {
+                    Button("Cancel") {
+                        isEditing = false
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
+                    Spacer()
+                    Button("Save") {
+                        store.updateClipText(clipId: clip.id, newText: editText)
+                        isEditing = false
+                    }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .frame(height: 58)
+            } else {
+                VStack(alignment: .leading, spacing: 3) {
+                    if let text = previewLabel, !text.isEmpty {
+                        Text(text)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    HStack {
+                        if let app = clip.sourceApp {
+                            Text(app)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                        }
+                        Spacer()
+                        Text(clip.createdAt, style: .relative)
                             .font(.system(size: 10))
                             .foregroundStyle(.tertiary)
                     }
-                    Spacer()
-                    Text(clip.createdAt, style: .relative)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .frame(height: 58)  // fixed footer height so all cards are the same total size
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .frame(height: 58)  // fixed footer height so all cards are the same total size
         }
         .frame(height: 168)  // 110 preview + 58 footer — prevents grid row misalignment
         .background(isSelected ? Color.accentColor.opacity(0.18) : Color(NSColor.controlBackgroundColor))
@@ -77,21 +112,25 @@ struct ClipCardView: View {
         .animation(.easeOut(duration: 0.12), value: isSelected)
         .onHover { isHovered = $0 }
         .contextMenu { contextMenu }
+        .onTapGesture(count: 2) {
+            guard clip.contentType != .image, clip.contentType != .color else { return }
+            guard !isEditing else { return }
+            isEditing = true
+        }
         .onTapGesture {
+            guard !isEditing else { return }
             let cmdHeld = NSEvent.modifierFlags.contains(.command)
             if cmdHeld {
-                // Cmd+click toggles selection
                 if selection.contains(clip.id) { selection.remove(clip.id) }
                 else                           { selection.insert(clip.id) }
             } else if !selection.isEmpty {
-                // Any click while something is selected adds to selection
                 if selection.contains(clip.id) { selection.remove(clip.id) }
                 else                           { selection.insert(clip.id) }
             } else {
                 NotchPanel.shared.pasteAndClose(clip)
             }
         }
-        .help("Click to paste · Cmd+click to multi-select · Right-click for options")
+        .help("Click to paste · Double-click to edit text · Cmd+click to multi-select")
     }
 
     // MARK: - Preview

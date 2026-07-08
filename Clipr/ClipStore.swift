@@ -218,6 +218,60 @@ class ClipStore: ObservableObject {
         return found
     }
 
+    func runAutoExpire() {
+        let days = SettingsStore.shared.autoExpireDays
+        guard days > 0 else { return }
+        guard let db = DatabaseManager.shared.dbQueue else { return }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        DispatchQueue.global(qos: .background).async {
+            do {
+                let toDelete: [ClipItem] = try db.read { db in
+                    try ClipItem
+                        .filter(Column("isPinned") == false)
+                        .filter(Column("createdAt") < cutoff)
+                        .fetchAll(db)
+                }
+                guard !toDelete.isEmpty else { return }
+                let ids = toDelete.map { $0.id }
+                try db.write { db in
+                    try db.execute(
+                        sql: "DELETE FROM clips WHERE id IN (\(ids.map { _ in "?" }.joined(separator: ",")))",
+                        arguments: StatementArguments(ids)
+                    )
+                }
+                toDelete.compactMap { $0.imageFilename }.forEach { FileStore.shared.deleteImage(filename: $0) }
+                DispatchQueue.main.async {
+                    self.clips.removeAll { ids.contains($0.id) }
+                }
+            } catch {
+                print("ClipStore: runAutoExpire failed — \(error)")
+            }
+        }
+    }
+
+    func updateClipText(clipId: String, newText: String) {
+        guard let db = DatabaseManager.shared.dbQueue else { return }
+        let newHash = ClipItem.hash(text: newText)
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try db.write { db in
+                    try db.execute(
+                        sql: "UPDATE clips SET textContent = ?, contentHash = ? WHERE id = ?",
+                        arguments: [newText, newHash, clipId]
+                    )
+                }
+                DispatchQueue.main.async {
+                    if let idx = self.clips.firstIndex(where: { $0.id == clipId }) {
+                        self.clips[idx].textContent = newText
+                        self.clips[idx].contentHash = newHash
+                    }
+                }
+            } catch {
+                print("ClipStore: updateClipText failed — \(error)")
+            }
+        }
+    }
+
     func updateOCRText(clipId: String, ocrText: String) {
         guard let db = DatabaseManager.shared.dbQueue else { return }
         DispatchQueue.global(qos: .background).async {

@@ -10,9 +10,8 @@ class GlobalHotkeyManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    // V = key code 9
-    private let hotkeyCode: CGKeyCode  = 9
-    private let hotkeyFlags: CGEventFlags = [.maskShift, .maskCommand]
+    private var hotkeyCode: CGKeyCode  { CGKeyCode(SettingsStore.shared.hotkeyCode) }
+    private var hotkeyFlags: CGEventFlags { CGEventFlags(rawValue: UInt64(SettingsStore.shared.hotkeyModifiers)) }
 
     private init() {}
 
@@ -70,6 +69,13 @@ class GlobalHotkeyManager {
         }
         DispatchQueue.main.async { QuickPastePanel.shared.toggle() }
         return nil // consume the event
+    }
+
+    func restart() {
+        if let tap = eventTap { CGEvent.tapEnable(tap: tap, enable: false) }
+        if let src = runLoopSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), src, .commonModes) }
+        eventTap = nil; runLoopSource = nil
+        createTap()
     }
 
     deinit {

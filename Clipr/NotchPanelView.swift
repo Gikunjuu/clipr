@@ -7,6 +7,7 @@ struct NotchPanelView: View {
 
     @State private var showContent = false
     @State private var selection: Set<String> = []
+    @State private var showSettings = false
 
     private let columns = [GridItem(.adaptive(minimum: 175, maximum: 220), spacing: 10)]
 
@@ -148,6 +149,18 @@ struct NotchPanelView: View {
             }
             .buttonStyle(.plain)
             .help(store.isIncognito ? "Incognito on" : "Enable incognito")
+
+            Button { showSettings.toggle() } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 13))
+                    .foregroundStyle(showSettings ? Color.accentColor : .secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Settings")
+            .popover(isPresented: $showSettings, arrowEdge: .bottom) {
+                SettingsView()
+                    .preferredColorScheme(.dark)
+            }
 
             Button { NSApp.terminate(nil) } label: {
                 Image(systemName: "power")

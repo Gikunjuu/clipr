@@ -1,77 +1,68 @@
 # Clipr
 
-A local-first, visual clipboard history manager for macOS — lives in your menu bar.
+A local-first, visual clipboard history manager for macOS — lives in your menu bar and stays out of the way.
 
-![macOS](https://img.shields.io/badge/macOS-13%2B-black) ![Swift](https://img.shields.io/badge/Swift-5.9-orange) ![License](https://img.shields.io/badge/license-MIT-blue)
+[![Download](https://img.shields.io/badge/Download-v1.0-blue)](https://github.com/Gikunjuu/clipr/releases/download/v1.0/Clipr-v1.0.dmg)
 
-[![Download](https://img.shields.io/badge/Download-Clipr%20v1.0-blue?style=for-the-badge&logo=apple)](https://github.com/Gikunjuu/clipr/releases/download/v1.0/Clipr-v1.0.dmg)
-
-![Clipr demo](assets/demo.gif)
-
-![Clipr screenshot](assets/screenshot.png)
+![Clipr demo](clipr-demo.gif)
 
 ## Features
 
-- **Visual grid** — every clip shown as a card: screenshots, colors, code, URLs, files, rich text
-- **Click to paste** — click any card to instantly paste it into whatever app you were using
-- **Multi-select** — Cmd+click to select multiple clips and paste them all at once
-- **Instant search** — full-text across content, OCR text, and URL titles
-- **Type filters** — filter by Text, Image, URL, Color, Code, File
-- **Duplicate detection** — identical clips collapse into one card with a copy count badge
-- **Pin clips** — keep important clips at the top permanently
-- **Incognito mode** — pause capture with one click
-- **On-device OCR** — Apple Vision extracts text from screenshots automatically
-- **Quick Paste** — global `Cmd+Shift+V` overlay to paste without leaving your keyboard
-- **Sensitive data filtering** — skips password managers, credit cards, API keys automatically
-- **Launch at Login** — right-click the menu bar icon to enable
+- Captures text, images, links, code, colors, and file paths automatically
+- Visual card grid with content previews
+- Duplicate detection — promotes existing cards instead of creating duplicates
+- Copy count badge on frequently copied items
+- OCR on images so you can search text inside screenshots
+- Incognito mode — pause capture for passwords and sensitive data
+- Pin clips to keep them at the top
+- Multi-select clips and paste them all at once
+- Single-click any card to instantly paste into your previous app
+- Double-click a text card to edit it before pasting
+- Filter by content type or source app
+- Search across all clips including OCR text
+- Hotkey customization — set your own shortcut to open Quick Paste
+- Auto-expire — automatically delete clips older than 1, 7, 14, 30, or 90 days
+- Launch at Login support
+- No cloud sync, no analytics, all data stays on your Mac
+
+## Download
+
+Grab the latest DMG from [Releases](https://github.com/Gikunjuu/clipr/releases).
+
+### First Launch (Gatekeeper)
+
+Because Clipr is not notarized, macOS will block it the first time. To clear this:
+
+```bash
+xattr -cr /Applications/Clipr.app
+```
+
+Then open it normally from Spotlight or `/Applications`.
 
 ## How it works
 
-1. Copy anything — Clipr captures it silently in the background
-2. Click the menu bar icon (or press `Cmd+Shift+V`) to open the panel
-3. Click a clip to paste it directly into your last active app
-4. Cmd+click to select multiple clips, then hit **Paste N** to paste them all joined together
+Clipr watches the system clipboard using `NSPasteboard` change-count polling and stores everything locally in SQLite (via GRDB) and a flat file store in `~/Library/Application Support/Clipr/`.
 
-## Privacy
+The notch panel is a borderless `NSWindow` that sits at the top center of your screen. Clicking your menu bar icon or pressing the global hotkey (default `⇧ ⌘ V`) expands it. Clicking a card writes it back to the pasteboard and sends a synthetic `Cmd+V` to your previous app via `CGEventTap` (requires Accessibility permission).
 
-- No cloud sync, no analytics, no telemetry
-- All data stored locally in `~/Library/Application Support/Clipr/`
-- OCR runs entirely on-device via Apple Vision
+## Settings
 
-## Tech
+Click the gear icon in the panel header to open Settings:
 
-- Swift + SwiftUI (macOS 13+)
-- [GRDB](https://github.com/groue/GRDB.swift) for local SQLite storage
-- Custom `NSWindow` notch panel with spring animation
-- `CGEventTap` for global hotkey and paste simulation (requires Accessibility permission)
-- `AVAudioEngine` for programmatic UI sounds
-- `CryptoKit` SHA-256 for duplicate detection
+- **Quick Paste Hotkey** — click the shortcut field and press your desired key combo
+- **Auto-expire Clips** — choose how long to keep clips before they are automatically deleted (pinned clips are never deleted)
 
-## First launch
+## Requirements
 
-**Step 1 — Bypass Gatekeeper (once)**
+- macOS 13 Ventura or later
+- Accessibility permission (required for paste simulation and the global hotkey)
 
-macOS will block Clipr on first open since it isn't notarized. To get past it:
+## Building from source
 
-1. Open your **Downloads** folder in Finder
-2. Double-click `Clipr.dmg` and drag Clipr to Applications
-3. In **Applications**, right-click `Clipr` → **Open**
-4. Click **Open** in the dialog that appears
+```bash
+git clone https://github.com/Gikunjuu/clipr.git
+cd clipr/Clipr
+open Clipr.xcodeproj
+```
 
-You only need to do this once. After that, Clipr opens normally.
-
-**Step 2 — Grant Accessibility permission**
-
-Clipr will prompt for Accessibility access on first launch — this is required to paste clips into other apps. Go to **System Settings → Privacy & Security → Accessibility** and enable Clipr.
-
-## Building
-
-1. Open `Clipr.xcodeproj` in Xcode 15+
-2. Set your development team in project settings
-3. Build & run (`Cmd+R`)
-
-> Distributed as a DMG — not available on the Mac App Store (CGEventTap requires full Accessibility access).
-
-## License
-
-MIT
+Build and run in Xcode. The app requires no external build tools — GRDB is embedded directly.
