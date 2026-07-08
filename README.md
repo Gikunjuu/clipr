@@ -2,48 +2,52 @@
 
 A local-first, visual clipboard history manager for macOS — lives in your menu bar and stays out of the way.
 
-[![Download](https://img.shields.io/badge/Download-v1.0-blue)](https://github.com/Gikunjuu/clipr/releases/download/v1.0/Clipr-v1.0.dmg)
+[![Download](https://img.shields.io/badge/Download-v1.1-blue)](https://github.com/Gikunjuu/clipr/releases/tag/v1.1)
 
-![Clipr demo](clipr-demo.gif)
+![All clips view](assets/screenshot-all.png)
 
-## Features
+![Links filter](assets/screenshot-links.png)
 
-- Captures text, images, links, code, colors, and file paths automatically
-- Visual card grid with content previews
-- Duplicate detection — promotes existing cards instead of creating duplicates
-- Copy count badge on frequently copied items
-- OCR on images so you can search text inside screenshots
-- Incognito mode — pause capture for passwords and sensitive data
-- Pin clips to keep them at the top
-- Multi-select clips and paste them all at once
-- Single-click any card to instantly paste into your previous app
-- Double-click a text card to edit it before pasting
-- Filter by content type or source app
-- Search across all clips including OCR text
-- Hotkey customization — set your own shortcut to open Quick Paste
-- Auto-expire — automatically delete clips older than 1, 7, 14, 30, or 90 days
-- Launch at Login support
-- No cloud sync, no analytics, all data stays on your Mac
+![Text filter](assets/screenshot-text.png)
+
+![Settings panel](assets/screenshot-settings.png)
 
 ## Download
 
-Grab the latest DMG from [Releases](https://github.com/Gikunjuu/clipr/releases).
+Download **[Clipr-v1.1.dmg](https://github.com/Gikunjuu/clipr/releases/tag/v1.1)**, open it, and drag Clipr to your Applications folder.
 
-### First Launch (Gatekeeper)
+> On first launch, macOS may say the app is from an unidentified developer. Go to System Settings → Privacy & Security and click **Open Anyway**.
+>
+> Clipr will also prompt for **Accessibility** permission — required to paste clips into other apps.
 
-Because Clipr is not notarized, macOS will block it the first time. To clear this:
+## What's new in v1.1
 
-```bash
-xattr -cr /Applications/Clipr.app
-```
+- Hotkey customization — set your own shortcut instead of the default `⇧ ⌘ V`
+- Clip editing — double-click any text card to edit it before pasting
+- Auto-expire — automatically delete clips older than 1, 7, 14, 30, or 90 days (pinned clips are exempt)
+- Settings panel accessible from the gear icon in the panel header
 
-Then open it normally from Spotlight or `/Applications`.
+## Features
+
+- Visual clipboard history in a Dynamic Island–style notch panel
+- Click any clip to instantly paste it into your last active app
+- Cmd+click to select multiple clips and paste them all at once
+- Duplicate detection — identical clips collapse into one card with a copy count
+- On-device OCR extracts text from screenshots (Apple Vision)
+- Incognito mode — pause capture for passwords and sensitive data
+- Pin clips to keep them at the top
+- Filter by content type or source app
+- Full-text search across all clips including OCR text
+- Global hotkey (default `⇧ ⌘ V`) to open the quick paste overlay
+- Sensitive data filtering — skips password managers, API keys, credit cards
+- Launch at Login support
+- No cloud sync, no analytics, all data stays on your Mac
 
 ## How it works
 
 Clipr watches the system clipboard using `NSPasteboard` change-count polling and stores everything locally in SQLite (via GRDB) and a flat file store in `~/Library/Application Support/Clipr/`.
 
-The notch panel is a borderless `NSWindow` that sits at the top center of your screen. Clicking your menu bar icon or pressing the global hotkey (default `⇧ ⌘ V`) expands it. Clicking a card writes it back to the pasteboard and sends a synthetic `Cmd+V` to your previous app via `CGEventTap` (requires Accessibility permission).
+The notch panel is a borderless `NSWindow` that sits at the top center of your screen. Clicking your menu bar icon or pressing the global hotkey expands it. Clicking a card writes it back to the pasteboard and sends a synthetic `Cmd+V` to your previous app via `CGEventTap` (requires Accessibility permission).
 
 ## Settings
 
