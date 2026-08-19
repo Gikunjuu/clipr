@@ -11,14 +11,12 @@ class QuickPastePanel: NSPanel {
     private init() {
         super.init(
             contentRect:  NSRect(x: 0, y: 0, width: 680, height: 460),
-            styleMask:    [.titled, .closable, .fullSizeContentView],
+            styleMask:    [.borderless],
             backing:      .buffered,
             defer:        false
         )
         isFloatingPanel             = true
         level                       = .floating
-        titleVisibility             = .hidden
-        titlebarAppearsTransparent  = true
         isMovableByWindowBackground = true
         isReleasedWhenClosed        = false
         isRestorable                = false

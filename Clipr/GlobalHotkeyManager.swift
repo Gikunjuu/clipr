@@ -9,6 +9,7 @@ class GlobalHotkeyManager {
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var trustPollTimer: Timer?
 
     private var hotkeyCode: CGKeyCode  { CGKeyCode(SettingsStore.shared.hotkeyCode) }
     private var hotkeyFlags: CGEventFlags { CGEventFlags(rawValue: UInt64(SettingsStore.shared.hotkeyModifiers)) }
@@ -21,9 +22,17 @@ class GlobalHotkeyManager {
         } else {
             let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
             AXIsProcessTrustedWithOptions(opts as CFDictionary)
-            // Re-try after the user (hopefully) grants access
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-                if AXIsProcessTrusted() { self?.createTap() }
+            // The user may take a while to grant access in System Settings, so keep
+            // polling instead of checking once. A single delayed check can miss the
+            // grant entirely and never create the tap for the rest of the session.
+            trustPollTimer?.invalidate()
+            trustPollTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] timer in
+                guard let self else { timer.invalidate(); return }
+                if AXIsProcessTrusted() {
+                    timer.invalidate()
+                    self.trustPollTimer = nil
+                    self.createTap()
+                }
             }
         }
     }
@@ -79,6 +88,7 @@ class GlobalHotkeyManager {
     }
 
     deinit {
+        trustPollTimer?.invalidate()
         if let tap = eventTap { CGEvent.tapEnable(tap: tap, enable: false) }
         if let src = runLoopSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), src, .commonModes) }
     }
