@@ -23,6 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ClipStore.shared.runAutoExpire()
         ClipboardMonitor.shared.start()
         GlobalHotkeyManager.shared.start()
+        enableLaunchAtLoginByDefault()
 
         setupStatusItem()
         DispatchQueue.main.async {
@@ -114,6 +115,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } catch {
             print("AppDelegate: launch-at-login toggle failed — \(error)")
+        }
+    }
+
+    // Turn Launch at Login on by default, but only the very first time the app
+    // ever runs. After that we leave it alone so a user who turns it off keeps
+    // it off on later launches.
+    private func enableLaunchAtLoginByDefault() {
+        let key = "clipr.hasSetDefaultLaunchAtLogin"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        guard !isLaunchAtLoginEnabled else { return }
+        do {
+            try SMAppService.mainApp.register()
+        } catch {
+            print("AppDelegate: default launch-at-login registration failed — \(error)")
         }
     }
 }
