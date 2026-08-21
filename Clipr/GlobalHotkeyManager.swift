@@ -76,6 +76,11 @@ class GlobalHotkeyManager {
         guard code == hotkeyCode, flags == hotkeyFlags else {
             return Unmanaged.passUnretained(event)
         }
+        // Holding the combo down fires repeat keyDown events. Without this check
+        // each repeat calls toggle() again, so the panel flips open/closed
+        // rapidly for as long as the key is held, which reads as "unreliable."
+        let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+        guard !isRepeat else { return nil }
         DispatchQueue.main.async { QuickPastePanel.shared.toggle() }
         return nil // consume the event
     }

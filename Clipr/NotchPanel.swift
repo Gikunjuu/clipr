@@ -71,6 +71,10 @@ class NotchPanel: NSWindow {
         // togglePanel() fired expand(). Treat that as a "close" intent, not open.
         guard Date().timeIntervalSince(lastCollapsedAt) > 0.35 else { return }
         guard !isExpanded else { return }
+        // The two panels don't share state, and NSApp.activate(ignoringOtherApps:)
+        // below brings every visible Clipr window forward, not just this one.
+        // An already-open QuickPastePanel would resurface alongside this panel.
+        QuickPastePanel.shared.dismiss()
         previousApp = NSWorkspace.shared.frontmostApplication
         isExpanded = true
         NotificationCenter.default.post(name: .notchPanelToggled, object: true)

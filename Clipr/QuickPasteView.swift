@@ -1,4 +1,5 @@
 import SwiftUI
+import Carbon.HIToolbox
 
 struct QuickPasteView: View {
     @EnvironmentObject var store: ClipStore
@@ -87,10 +88,18 @@ struct QuickPasteView: View {
             .padding(.vertical, 8)
         }
         .background(VisualEffectBackground(material: .hudWindow, blendingMode: .behindWindow))
+        .background(
+            // The search field is the first responder, and its NSTextView field
+            // editor swallows up/down arrow key events internally before SwiftUI's
+            // onKeyPress ever sees them. Catch arrows at the AppKit level instead,
+            // same trick as the hotkey recorder in SettingsView.
+            ArrowKeyCatcher(
+                onUp:   { selectedIndex = max(0, selectedIndex - 1) },
+                onDown: { selectedIndex = min(results.count - 1, selectedIndex + 1) }
+            )
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .frame(width: 680, height: 460)
-        .onKeyPress(.upArrow)    { selectedIndex = max(0, selectedIndex - 1);                  return .handled }
-        .onKeyPress(.downArrow)  { selectedIndex = min(results.count - 1, selectedIndex + 1);  return .handled }
         .onKeyPress(.return)     { commitSelection();                                           return .handled }
         .onKeyPress(.escape)     { onDismiss();                                                 return .handled }
     }
@@ -165,6 +174,58 @@ struct QuickPasteRow: View {
         default:        return clip.textContent ?? ""
         }
     }
+}
+
+// MARK: - Arrow key interception
+
+// Intercepts up/down arrow keys via a local event monitor so they reach us
+// even while a text field has focus and would otherwise consume them.
+private struct ArrowKeyCatcher: NSViewRepresentable {
+    let onUp:   () -> Void
+    let onDown: () -> Void
+
+    func makeNSView(context: Context) -> ArrowKeyCatcherView {
+        let view = ArrowKeyCatcherView()
+        view.onUp   = onUp
+        view.onDown = onDown
+        return view
+    }
+
+    func updateNSView(_ nsView: ArrowKeyCatcherView, context: Context) {
+        nsView.onUp   = onUp
+        nsView.onDown = onDown
+    }
+}
+
+private final class ArrowKeyCatcherView: NSView {
+    var onUp:   (() -> Void)?
+    var onDown: (() -> Void)?
+    private var monitor: Any?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        removeMonitor()
+        guard let window else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak window] event in
+            // NSApp.keyWindow is unreliable for accessory-policy apps (LSUIElement),
+            // which Clipr is. It never matched even while this window was
+            // genuinely receiving keystrokes, so the window's own isKeyWindow is
+            // the authoritative check here.
+            guard let self, let window, window.isKeyWindow else { return event }
+            switch Int(event.keyCode) {
+            case kVK_UpArrow:   self.onUp?();   return nil
+            case kVK_DownArrow: self.onDown?(); return nil
+            default:            return event
+            }
+        }
+    }
+
+    private func removeMonitor() {
+        if let m = monitor { NSEvent.removeMonitor(m) }
+        monitor = nil
+    }
+
+    deinit { removeMonitor() }
 }
 
 // MARK: - NSVisualEffectView wrapper

@@ -37,6 +37,7 @@ class QuickPastePanel: NSPanel {
     }
 
     func show() {
+        NotchPanel.shared.collapse()
         previousApp = NSWorkspace.shared.frontmostApplication
         center()
         makeKeyAndOrderFront(nil)
